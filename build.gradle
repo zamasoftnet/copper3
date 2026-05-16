@@ -1,0 +1,494 @@
+import org.apache.tools.ant.filters.ReplaceTokens
+import org.gradle.api.tasks.Copy
+import org.gradle.api.tasks.Sync
+import org.gradle.api.tasks.bundling.Compression
+import org.gradle.api.tasks.bundling.Jar
+import org.gradle.api.tasks.bundling.Tar
+import org.gradle.api.tasks.bundling.Zip
+import org.gradle.api.tasks.wrapper.Wrapper
+
+
+def moduleVersions = [
+    copper           : '3.2.32',
+    'cti-java'       : '2.2.3',
+    'cti-ant'        : '2.2.3',
+    'cti-cli'        : '2.2.3',
+    'cti-driver'     : '2.2.3',
+    'cti-driver-ctip': '2.2.3',
+    'cti-driver-rest': '2.2.3',
+    'cti-examples'   : '2.2.3',
+    'cti-if'         : '2.2.3',
+    'cti-server-ctip': '2.2.3',
+    'cti-server-rest': '2.2.3',
+    'zs-plugin'      : '2.2.0',
+    homare           : '3.2.32',
+    sakae            : '1.0.0',
+    'sakae-core'     : '1.0.0',
+    'sakae-pdf'      : '1.0.0',
+    'zs-balancer'    : '1.1.0',
+    'zs-cache'       : '0.0.1',
+    'zs-epub'        : '0.1.0',
+    'zs-font'        : '1.2.3',
+    'zs-resolver'    : '1.1.0',
+    'zs-rsr'         : '1.1.0',
+    'zs-sac'         : '1.3.0'
+]
+
+def javaProjectPaths = [
+    ':cti-java:zs-plugin',
+    ':cti-java:cti-if',
+    ':cti-java:cti-driver-ctip',
+    ':cti-java:cti-driver-rest',
+    ':cti-java:cti-cli',
+    ':cti-java:cti-ant',
+    ':cti-java:cti-server-ctip',
+    ':cti-java:cti-server-rest',
+    ':cti-java:cti-examples',
+    ':cti-java:cti-driver',
+    ':homare',
+    ':sakae:sakae-pdf',
+    ':sakae:sakae-core',
+    ':sakae:zs-resolver',
+    ':sakae:zs-font',
+    ':sakae:zs-rsr',
+    ':zs-balancer',
+    ':zs-epub',
+    ':zs-sac'
+] as Set
+
+def runtimeDependencyCopyProjectPaths = [
+    ':cti-java:cti-ant',
+    ':cti-java:cti-cli',
+    ':cti-java:cti-driver',
+    ':cti-java:cti-driver-ctip',
+    ':cti-java:cti-driver-rest',
+    ':cti-java:cti-examples',
+    ':cti-java:cti-if',
+    ':cti-java:cti-server-ctip',
+    ':cti-java:cti-server-rest',
+    ':homare',
+    ':sakae:sakae-pdf'
+] as Set
+
+def native2AsciiProjectPaths = [
+    ':cti-java:cti-if',
+    ':cti-java:cti-server-rest',
+    ':homare'
+] as Set
+
+allprojects {
+    group = 'net.zamasoft'
+    version = moduleVersions[project.name] ?: moduleVersions.copper
+
+    repositories {
+        mavenCentral()
+    }
+}
+
+allprojects {
+    configurations.configureEach {
+        resolutionStrategy.force 'xml-apis:xml-apis:1.4.01'
+    }
+}
+
+configure([rootProject, project(':cti-java'), project(':sakae')]) {
+    apply plugin: 'base'
+}
+
+configure(subprojects.findAll { javaProjectPaths.contains(it.path) }) {
+    apply plugin: 'java-library'
+
+    java {
+        sourceCompatibility = JavaVersion.VERSION_1_8
+        targetCompatibility = JavaVersion.VERSION_1_8
+    }
+
+    tasks.withType(JavaCompile).configureEach {
+        options.encoding = 'UTF-8'
+    }
+
+    tasks.withType(Javadoc).configureEach {
+        options.encoding = 'UTF-8'
+        options.charSet = 'UTF-8'
+        options.docEncoding = 'UTF-8'
+        options.links('https://docs.oracle.com/javase/jp/8/docs/api/')
+        options.addStringOption('Xdoclint:none', '-quiet')
+        destinationDir = new File(System.getProperty('java.io.tmpdir'), 'copper-javadocs/' + project.path.replace(':', '_'))
+        doFirst {
+            destinationDir.mkdirs()
+        }
+    }
+
+    tasks.named('processResources').configure {
+        filteringCharset = 'UTF-8'
+    }
+
+    if (runtimeDependencyCopyProjectPaths.contains(path)) {
+        def copyRuntimeDependencies = tasks.register('copyRuntimeDependencies', Sync) {
+            from configurations.runtimeClasspath
+            into layout.buildDirectory.dir('dependencies')
+        }
+
+        tasks.named('assemble').configure {
+            dependsOn copyRuntimeDependencies
+        }
+    }
+
+    if (native2AsciiProjectPaths.contains(path)) {
+        tasks.named('processResources').configure {
+            doLast {
+                def outputDir = destinationDir
+                if (outputDir == null || !outputDir.exists()) {
+                    return
+                }
+
+                def propertyFiles = fileTree(outputDir) {
+                    include '**/*.properties'
+                }
+                if (propertyFiles.isEmpty()) {
+                    return
+                }
+
+                def tempDir = new File(temporaryDir, 'native2ascii')
+                project.delete(tempDir)
+                ant.native2ascii(src: outputDir, dest: tempDir, encoding: 'UTF-8', includes: '**/*.properties')
+                copy {
+                    from tempDir
+                    into outputDir
+                    include '**/*.properties'
+                    includeEmptyDirs = false
+                }
+            }
+        }
+    }
+}
+
+project(':cti-java:zs-plugin') {
+    dependencies {
+    }
+}
+
+project(':cti-java:cti-if') {
+    dependencies {
+        api project(':sakae:zs-rsr')
+        api project(':sakae:zs-resolver')
+        api project(':cti-java:zs-plugin')
+        api 'javax.servlet:javax.servlet-api:4.0.1'
+        api 'jakarta.servlet:jakarta.servlet-api:5.0.0'
+    }
+}
+
+project(':cti-java:cti-driver-ctip') {
+    dependencies {
+        api project(':cti-java:cti-if')
+    }
+}
+
+project(':cti-java:cti-driver-rest') {
+    dependencies {
+        api project(':cti-java:cti-if')
+    }
+}
+
+project(':cti-java:cti-cli') {
+    dependencies {
+        api project(':cti-java:cti-if')
+        api 'commons-cli:commons-cli:[1.4,)'
+    }
+
+    tasks.named('processResources').configure {
+        filesMatching('jp/cssj/driver/cli/VERSION') {
+            filter(ReplaceTokens, tokens: [version: project.version.toString()], beginToken: '#', endToken: '#')
+        }
+    }
+}
+
+project(':cti-java:cti-ant') {
+    dependencies {
+        api project(':cti-java:cti-if')
+        compileOnly 'org.apache.ant:ant:[1.9,1.10)'
+    }
+}
+
+project(':cti-java:cti-server-ctip') {
+    dependencies {
+        api project(':cti-java:cti-driver-ctip')
+    }
+}
+
+project(':cti-java:cti-server-rest') {
+    dependencies {
+        api project(':cti-java:cti-server-ctip')
+        api 'commons-fileupload:commons-fileupload:[1.3,)'
+    }
+}
+
+project(':cti-java:cti-examples') {
+    dependencies {
+        api project(':cti-java:cti-driver-ctip')
+        api project(':cti-java:cti-driver-rest')
+    }
+}
+
+project(':cti-java:cti-driver') {
+    dependencies {
+        api project(':cti-java:cti-ant')
+        api project(':cti-java:cti-cli')
+        api project(':cti-java:cti-driver-ctip')
+        api project(':cti-java:cti-driver-rest')
+        api project(':cti-java:cti-if')
+    }
+
+    def fatJar = tasks.register('fatJar', Jar) {
+        archiveClassifier.set('jar-with-dependencies')
+        duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+        exclude 'META-INF/*.SF', 'META-INF/*.DSA', 'META-INF/*.RSA'
+        from sourceSets.main.output
+        dependsOn configurations.runtimeClasspath
+        from {
+            configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+        }
+    }
+
+    tasks.named('assemble').configure {
+        dependsOn fatJar
+    }
+}
+
+project(':homare') {
+    dependencies {
+        api project(':sakae:sakae-pdf')
+        api project(':zs-balancer')
+        api project(':zs-sac')
+        api project(':zs-epub')
+        api project(':cti-java:cti-if')
+        api 'commons-primitives:commons-primitives:[1.0,)'
+        api 'org.apache.xmlgraphics:batik-svggen:1.14'
+        api 'org.apache.xmlgraphics:batik-script:1.14'
+        api 'org.apache.xmlgraphics:batik-ext:1.14'
+        api 'org.w3c.css:sac:1.3'
+        api 'xml-apis:xml-apis:1.4.01'
+        api 'xerces:xercesImpl:2.11.0'
+        api 'avalon-framework:avalon-framework-impl:4.3'
+        api 'net.sf.barcode4j:barcode4j:2.1'
+        api files('lib/Qrcode.jar')
+        api 'de.rototor.jeuclid:jeuclid-core:3.1.11'
+    }
+}
+
+project(':sakae:sakae-core') {
+    dependencies {
+        api 'commons-collections:commons-collections:[4.4,)'
+        api project(':sakae:zs-resolver')
+        api project(':sakae:zs-font')
+        api project(':sakae:zs-rsr')
+    }
+}
+
+project(':sakae:sakae-pdf') {
+    dependencies {
+        api project(':sakae:sakae-core')
+        api 'org.apache.xmlgraphics:batik-gvt:1.14'
+        api 'org.apache.xmlgraphics:batik-bridge:1.14'
+        api 'org.apache.xmlgraphics:batik-anim:1.14'
+        api 'xml-apis:xml-apis:1.4.01'
+        api 'com.twelvemonkeys.imageio:imageio-jpeg:[3.12.0,)'
+        api 'com.drewnoakes:metadata-extractor:2.19.0'
+    }
+}
+
+project(':sakae:zs-font') {
+    dependencies {
+    }
+}
+
+project(':sakae:zs-resolver') {
+    dependencies {
+        api 'commons-codec:commons-codec:[1.11,)'
+        api 'commons-io:commons-io:[2.6,)'
+        api 'commons-logging:commons-logging:[1.2,)'
+        api 'org.apache.httpcomponents:httpclient:[4.5,)'
+        api 'org.apache.httpcomponents:httpcore:[4.4,)'
+        api 'org.apache.httpcomponents:httpcore-nio:[4.4,)'
+        api 'org.apache.httpcomponents:httpmime:[4.5.4,)'
+    }
+}
+
+project(':sakae:zs-rsr') {
+    dependencies {
+    }
+}
+
+project(':zs-balancer') {
+    dependencies {
+        api 'net.sourceforge.nekohtml:nekohtml:1.9.18'
+    }
+}
+
+
+project(':zs-epub') {
+    dependencies {
+    }
+}
+
+project(':zs-sac') {
+    dependencies {
+    }
+}
+
+project(':cti-java') {
+    def releaseDir = layout.buildDirectory.dir('release')
+    def archiveStem = "cti-java-${project.version.toString().replace('.', '_')}"
+
+    def ctiDriverFatJar = project(':cti-java:cti-driver').tasks.named('fatJar', Jar)
+    def ctiDriverRestJar = project(':cti-java:cti-driver-rest').tasks.named('jar', Jar)
+    def ctiDriverCtipJar = project(':cti-java:cti-driver-ctip').tasks.named('jar', Jar)
+    def ctiIfJar = project(':cti-java:cti-if').tasks.named('jar', Jar)
+    def zsPluginJar = project(':cti-java:zs-plugin').tasks.named('jar', Jar)
+    def zsResolverJar = project(':sakae:zs-resolver').tasks.named('jar', Jar)
+    def zsRsrJar = project(':sakae:zs-rsr').tasks.named('jar', Jar)
+    def ctiIfJavadoc = project(':cti-java:cti-if').tasks.named('javadoc')
+
+    def prepareRelease = tasks.register('prepareRelease', Copy) {
+        dependsOn ctiDriverFatJar, ctiDriverRestJar, ctiIfJavadoc
+        into releaseDir
+
+        from('README.txt') {
+            filter(ReplaceTokens, tokens: [version: project.version.toString()], beginToken: '@', endToken: '@')
+        }
+
+        from('cti-examples/src/scripts') {
+            filter(ReplaceTokens, tokens: [version: project.version.toString()], beginToken: '@', endToken: '@')
+        }
+
+        into('examples') {
+            from('cti-examples/src/main') {
+                include 'files/**'
+                include 'webapp/**'
+            }
+
+            from('cti-examples/build.xml') {
+                filter(ReplaceTokens, tokens: [version: project.version.toString()], beginToken: '@', endToken: '@')
+                rename { 'build.xml' }
+            }
+        }
+
+        into('examples/src') {
+            from('cti-examples/src/main/java')
+        }
+
+        into('lib') {
+            from(project(':cti-java:cti-driver').configurations.runtimeClasspath) {
+                include '*servlet-api-*.jar'
+            }
+        }
+
+        into('apidoc') {
+            from ctiIfJavadoc
+        }
+    }
+
+    def releaseDriverJar = tasks.register('releaseDriverJar', Jar) {
+        dependsOn ctiDriverFatJar, ctiDriverRestJar
+        archiveBaseName.set('cti-driver')
+        archiveVersion.set(project.version.toString())
+        destinationDirectory.set(releaseDir)
+        duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+
+        manifest {
+            attributes('Main-Class': 'jp.cssj.driver.cli.Main')
+        }
+
+        from({
+            zipTree(ctiDriverRestJar.get().archiveFile.get().asFile)
+        }) {
+            include 'META-INF/plugin/jp.cssj.cti2.CTIDriver.impl'
+        }
+
+        from({
+            zipTree(ctiDriverFatJar.get().archiveFile.get().asFile)
+        }) {
+            exclude 'javax', 'javax/**', 'jakarta', 'jakarta/**'
+            exclude 'META-INF/plugin/jp.cssj.cti2.CTIDriver.impl'
+            exclude 'META-INF/*.SF', 'META-INF/*.DSA', 'META-INF/*.RSA'
+        }
+    }
+
+    def releaseDriverMinJar = tasks.register('releaseDriverMinJar', Jar) {
+        dependsOn ctiDriverCtipJar, ctiIfJar, zsPluginJar, zsResolverJar, zsRsrJar
+        archiveBaseName.set('cti-driver-min')
+        archiveVersion.set(project.version.toString())
+        destinationDirectory.set(releaseDir)
+        duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+
+        from({ zipTree(ctiDriverCtipJar.get().archiveFile.get().asFile) }) {
+            exclude 'META-INF/*.SF', 'META-INF/*.DSA', 'META-INF/*.RSA'
+        }
+        from({ zipTree(ctiIfJar.get().archiveFile.get().asFile) }) {
+            exclude 'META-INF/*.SF', 'META-INF/*.DSA', 'META-INF/*.RSA'
+        }
+        from({ zipTree(zsPluginJar.get().archiveFile.get().asFile) }) {
+            exclude 'META-INF/*.SF', 'META-INF/*.DSA', 'META-INF/*.RSA'
+        }
+        from({ zipTree(zsResolverJar.get().archiveFile.get().asFile) }) {
+            exclude 'META-INF/*.SF', 'META-INF/*.DSA', 'META-INF/*.RSA'
+        }
+        from({ zipTree(zsRsrJar.get().archiveFile.get().asFile) }) {
+            exclude 'META-INF/*.SF', 'META-INF/*.DSA', 'META-INF/*.RSA'
+        }
+    }
+
+    def release = tasks.register('release') {
+        dependsOn prepareRelease, releaseDriverJar, releaseDriverMinJar
+    }
+
+    def releaseZip = tasks.register('releaseZip', Zip) {
+        dependsOn release
+        archiveFileName.set("${archiveStem}.zip")
+        destinationDirectory.set(layout.buildDirectory)
+        from(releaseDir) {
+            into archiveStem
+        }
+    }
+
+    def releaseTar = tasks.register('releaseTar', Tar) {
+        dependsOn release
+        archiveFileName.set("${archiveStem}.tar")
+        destinationDirectory.set(layout.buildDirectory)
+        compression = Compression.NONE
+        from(releaseDir) {
+            into archiveStem
+        }
+    }
+
+    def releaseTarGz = tasks.register('releaseTarGz', Tar) {
+        dependsOn release
+        archiveFileName.set("${archiveStem}.tar.gz")
+        destinationDirectory.set(layout.buildDirectory)
+        compression = Compression.GZIP
+        from(releaseDir) {
+            into archiveStem
+        }
+    }
+
+    [release, releaseZip, releaseTar, releaseTarGz].each {
+        it.configure {
+            mustRunAfter tasks.named('clean')
+        }
+    }
+
+    tasks.register('dist') {
+        dependsOn tasks.named('clean'), releaseZip, releaseTar, releaseTarGz
+    }
+}
+
+tasks.named('wrapper', Wrapper).configure {
+    gradleVersion = '8.9'
+    distributionType = Wrapper.DistributionType.BIN
+}
+
+
+
+
+
+

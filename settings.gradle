@@ -1,0 +1,28 @@
+rootProject.name = 'copper'
+
+include 'cti-java'
+include 'cti-java:zs-plugin'
+include 'cti-java:cti-if'
+include 'cti-java:cti-driver-ctip'
+include 'cti-java:cti-driver-rest'
+include 'cti-java:cti-cli'
+include 'cti-java:cti-ant'
+include 'cti-java:cti-server-ctip'
+include 'cti-java:cti-server-rest'
+include 'cti-java:cti-examples'
+include 'cti-java:cti-driver'
+
+include 'homare'
+
+include 'sakae'
+include 'sakae:sakae-pdf'
+include 'sakae:sakae-core'
+include 'sakae:zs-resolver'
+include 'sakae:zs-font'
+include 'sakae:zs-rsr'
+
+include 'zs-balancer'
+include 'zs-epub'
+include 'zs-sac'
+
+
