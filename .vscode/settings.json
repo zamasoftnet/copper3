@@ -1,0 +1,15 @@
+{
+    "java.jdt.ls.java.home": "C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.7.6-hotspot",
+    "java.import.gradle.java.home": "C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.7.6-hotspot",
+    "java.import.gradle.wrapper.enabled": true,
+    "gradle.java.home": "C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.7.6-hotspot",
+    "jdk.jdkhome": "C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.7.6-hotspot",
+    "java.configuration.updateBuildConfiguration": "interactive",
+    "java.configuration.runtimes": [
+        {
+            "name": "JavaSE-21",
+            "path": "C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.7.6-hotspot",
+            "default": true
+        }
+    ]
+}
