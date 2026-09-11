@@ -131,10 +131,16 @@ public final class Main {
 			OPTIONS.addOption(opt);
 		}
 		{
-			Option opt = new Option("t", "trust", false, "SSL接続で常に証明書を信頼します。");
+			Option opt = new Option("t", "trust", false, "サーバー証明書を検証しません(試験用)。--insecure と同じです。");
 			OPTIONS.addOption(opt);
 		}
 	}
+
+    static {
+        OPTIONS.addOption(new Option(null, "insecure", false, "サーバー証明書を検証しません(試験用)。"));
+    }
+    private static final java.util.concurrent.atomic.AtomicBoolean TRUST_WARNING =
+            new java.util.concurrent.atomic.AtomicBoolean();
 
 	private Main() {
 		// unused
@@ -249,9 +255,12 @@ public final class Main {
 			password = line.getOptionValue("pw");
 		}
 		
-		if (line.hasOption("t")) {
-			System.setProperty("jp.cssj.driver.tls.trust", "true");
-		}
+		if (line.hasOption("insecure") || line.hasOption("t")) {
+            if (line.hasOption("insecure") && line.hasOption("t") && TRUST_WARNING.compareAndSet(false, true)) {
+                System.err.println("WARNING: --insecure takes precedence over -t/--trust.");
+            }
+            System.setProperty(jp.cssj.cti2.TLSPolicy.INSECURE, "true");
+        }
 		
 		boolean sv = line.hasOption("sv");
 

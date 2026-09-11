@@ -293,7 +293,9 @@ public class CTIServer {
 		if (this.tlsPort != -1) {
 			try {
 				KeyStore keyStore = KeyStore.getInstance("JKS");
-				keyStore.load(new FileInputStream(this.keyStore), this.keyPassword.toCharArray());
+				try (InputStream in = new FileInputStream(this.keyStore)) {
+					keyStore.load(in, this.keyPassword.toCharArray());
+				}
 				KeyManagerFactory kmf = KeyManagerFactory.getInstance("SunX509");
 				kmf.init(keyStore, this.keyStorePassword.toCharArray());
 				SSLContext sslCtxt = SSLContext.getInstance("TLS");

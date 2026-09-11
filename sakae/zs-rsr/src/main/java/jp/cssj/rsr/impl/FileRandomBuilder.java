@@ -35,6 +35,19 @@ public class FileRandomBuilder extends AbstractRandomAccessFileBuilder implement
 		this.out.write(b, off, len);
 	}
 
+    @Override
+    public void dispose() {
+        try {
+            if (this.out != null) {
+                try { this.out.close(); }
+                catch (IOException e) {
+                    java.util.logging.Logger.getLogger(FileRandomBuilder.class.getName())
+                        .log(java.util.logging.Level.WARNING, "Could not close output file", e);
+                } finally { this.out = null; }
+            }
+        } finally { super.dispose(); }
+    }
+
 	public void finish() throws IOException {
 		if (this.out != null) {
 			this.out.close();

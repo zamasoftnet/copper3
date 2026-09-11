@@ -43,7 +43,8 @@ public class CTIPDriver implements CTIDriver, Plugin<URI> {
 		if (query != null) {
 			String[] params = query.split("&");
 			for (int i = 0; i < params.length; ++i) {
-				if (params[0].equals("version=1")) {
+				if (params[i].equals("version=1")) {
+					V1Session.rejectSecureScheme(uri);
 					return new V1Session(uri, ENCODING, user, password);
 				}
 			}

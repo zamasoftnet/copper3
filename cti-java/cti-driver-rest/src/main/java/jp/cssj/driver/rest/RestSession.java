@@ -110,7 +110,7 @@ public class RestSession extends AbstractCTISession implements CTISession {
 		HttpClientBuilder builder = HttpClientBuilder.create();
 		if (uri.getScheme().equals("https")) {
 			try {
-				if (System.getProperty("jp.cssj.driver.tls.trust", "true").equalsIgnoreCase("true")) {
+				if (jp.cssj.cti2.TLSPolicy.isInsecure()) {
 					SSLContext ssl = org.apache.http.ssl.SSLContextBuilder.create()
 							.loadTrustMaterial(new TrustSelfSignedStrategy()).build();
 					builder.setSSLContext(ssl);
@@ -122,7 +122,7 @@ public class RestSession extends AbstractCTISession implements CTISession {
 					builder.setSSLContext(ssl);
 				}
 			} catch (Exception e) {
-				IOException(e);
+				throw IOException(e);
 			}
 		}
 		this.client = builder.build();

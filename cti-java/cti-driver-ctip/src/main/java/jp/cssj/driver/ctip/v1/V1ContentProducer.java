@@ -64,6 +64,7 @@ public class V1ContentProducer {
 	protected ChannelIO io;
 
 	public V1ContentProducer(URI uri, String encoding) throws IOException {
+		V1Session.rejectSecureScheme(uri);
 		this.encoding = encoding;
 		this.uri = uri;
 	}

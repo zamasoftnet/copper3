@@ -79,6 +79,24 @@ See the License for the specific language governing permissions and
 limitations under the License.
 
 ■ 変更履歴
+-- v2.2.4 2026-09-11
+TLS 1.3、部分送受信、終了・中断・reset時の資源解放を修正しました。
+CTIP/HTTPS REST は既定で証明書と接続先名を検証します。
+独自CAは JVM の javax.net.ssl.trustStore へ登録してください。
+Antの変換用 property はJVMのシステムプロパティとは別物です。
+試験用に -Djp.cssj.driver.tls.insecure=true または CLI --insecure を指定できます。
+旧 jp.cssj.driver.tls.trust は指定時にJVMごとに1回警告します。新名が優先します。
+-t/--trust も同じ意味で使えます。--insecure との同時指定は新名を優先し1回警告します。
+insecure=true のCTIPは証明書検証を省略します。RESTは提示チェーンが1枚なら信頼扱いとし、
+2枚以上は通常の信頼検証を行います。両者ともホスト名検証を省略します。
+ctips と version=1 の組合せは、平文へ接続せず例外にします。
+文字列長は65535バイトまで送受信し、それ以上はIOExceptionにします。
+reset後の旧出力ストリームは無効です(writeはIllegalStateException、closeは何もしません)。
+
+版と公開APIの対応:
+2.2.4 = 従来の MetaSource / RandomBuilder / META-INF/plugin 探索 + TLS修正
+2.3.0 = 上流の SourceMetadata / FragmentedOutput に移行した別API + TLS修正
+
 -- v2.2.3 2024-03-27
 サーブレットでContent-Typeを出力する際に、空の charset= パラメータが追加されてしまうバグに対応しました。
 

@@ -50,7 +50,14 @@ public class V1Session extends AbstractCTISession implements CTISession {
 
 	protected long srcPos = 0L;
 
+	public static void rejectSecureScheme(URI uri) throws IOException {
+        if (uri != null && "ctips".equalsIgnoreCase(uri.getScheme())) {
+            throw new IOException("ctips: does not support CTIP v1; remove version=1");
+        }
+    }
+
 	public V1Session(URI uri, String encoding, String user, String password) throws IOException {
+		V1Session.rejectSecureScheme(uri);
 		this.uri = uri;
 		this.encoding = encoding;
 		this.user = user == null ? "" : user;

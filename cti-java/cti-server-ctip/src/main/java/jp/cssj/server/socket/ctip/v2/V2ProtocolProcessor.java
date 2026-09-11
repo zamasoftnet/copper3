@@ -117,9 +117,6 @@ public class V2ProtocolProcessor implements ResponseConsumer, ProtocolProcessor,
 			byte[] uriBytes = ChannelIO.toBytes(uri.toString(), v2pp.charset);
 			{
 				int length = uriBytes.length;
-				if (length > Short.MAX_VALUE) {
-					length = Short.MAX_VALUE;
-				}
 				int payload = 1 + 2 + length;
 				v2pp.out.writeInt(payload);
 				v2pp.out.writeByte(V2ServerPackets.RESOURCE_REQUEST);
@@ -232,6 +229,7 @@ public class V2ProtocolProcessor implements ResponseConsumer, ProtocolProcessor,
 					break;
 
 				case V2ClientPackets.START_MAIN: {
+					if (this.cursorId == -2) { this.cursorId = -1; }
 					// パイプライン変換開始
 					URI uri;
 					String uriStr = request.getURI();
@@ -268,24 +266,14 @@ public class V2ProtocolProcessor implements ResponseConsumer, ProtocolProcessor,
 						}
 						this.next();
 					} catch (TranscoderException e) {
-						// 中断
-						switch (e.getState()) {
-						case TranscoderException.STATE_BROKEN:
-							this.abort((byte) 1, e.getCode(), e.getArgs(), e.getMessage());
-							break;
-						case TranscoderException.STATE_READABLE:
-							this.eof();
-							this.abort((byte) 0, e.getCode(), e.getArgs(), e.getMessage());
-							break;
-						default:
-							throw new IllegalStateException();
-						}
+						this.abort(e);
 					}
 					request.next();
 				}
 					break;
 
 				case V2ClientPackets.SERVER_MAIN: {
+					if (this.cursorId == -2) { this.cursorId = -1; }
 					// サーバー側データ変換
 					URI uri;
 					String uriStr = request.getURI();
@@ -309,18 +297,7 @@ public class V2ProtocolProcessor implements ResponseConsumer, ProtocolProcessor,
 						this.session.transcode(uri);
 						this.next();
 					} catch (TranscoderException e) {
-						// 中断
-						switch (e.getState()) {
-						case TranscoderException.STATE_BROKEN:
-							this.abort((byte) 1, e.getCode(), e.getArgs(), e.getMessage());
-							break;
-						case TranscoderException.STATE_READABLE:
-							this.eof();
-							this.abort((byte) 0, e.getCode(), e.getArgs(), e.getMessage());
-							break;
-						default:
-							throw new IllegalStateException();
-						}
+						this.abort(e);
 					} finally {
 						this.request = null;
 					}
@@ -433,6 +410,23 @@ public class V2ProtocolProcessor implements ResponseConsumer, ProtocolProcessor,
 		this.out.writeInt(id);
 		this.out.flush();
 	}
+
+    private void abort(TranscoderException e) throws IOException {
+        if (this.cursorId == -2) { return; }
+        switch (e.getState()) {
+        case TranscoderException.STATE_READABLE:
+            this.finish();
+            this.abort((byte) 0, e.getCode(), e.getArgs(), e.getMessage());
+            break;
+        case TranscoderException.STATE_BROKEN:
+            this.bufferLength = 0;
+            this.abort((byte) 1, e.getCode(), e.getArgs(), e.getMessage());
+            break;
+        default:
+            throw new IllegalStateException();
+        }
+        this.out.flush();
+    }
 
 	protected void abort(byte mode, short code, String[] args, String message) throws IOException {
 		message = stringLimit(message);

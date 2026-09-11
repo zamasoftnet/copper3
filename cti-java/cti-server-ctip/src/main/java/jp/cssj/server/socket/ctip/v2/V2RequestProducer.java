@@ -89,7 +89,7 @@ public class V2RequestProducer {
 	}
 
 	private String readString() throws IOException {
-		short len = this.in.readShort();
+		int len = this.in.readUnsignedShort();
 		if (len <= 0) {
 			return null;
 		}
