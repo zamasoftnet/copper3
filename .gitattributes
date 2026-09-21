@@ -1,0 +1,6 @@
+# Linux/WSL でそのまま実行する文字ファイルは LF で固定する(2026-09-21)。
+# core.autocrlf=true の Windows で clone し直すと CRLF で展開され、
+# gradlew が「bad interpreter: ^M」で動かなくなる。
+gradlew  text eol=lf
+*.sh     text eol=lf
+gradlew.bat text eol=crlf
