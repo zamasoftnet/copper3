@@ -9,7 +9,7 @@ import org.gradle.api.tasks.wrapper.Wrapper
 
 
 def moduleVersions = [
-    copper           : '3.2.32',
+    copper           : '3.2.33',
     'cti-java'       : '2.2.4',
     'cti-ant'        : '2.2.4',
     'cti-cli'        : '2.2.4',
@@ -21,7 +21,7 @@ def moduleVersions = [
     'cti-server-ctip': '2.2.4',
     'cti-server-rest': '2.2.4',
     'zs-plugin'      : '2.2.0',
-    homare           : '3.2.32',
+    homare           : '3.2.33',
     sakae            : '1.0.0',
     'sakae-core'     : '1.0.0',
     'sakae-pdf'      : '1.0.0',
