@@ -326,8 +326,24 @@ project(':homare') {
         api 'org.w3c.css:sac:1.3'
         api 'xml-apis:xml-apis:1.4.01'
         api 'xerces:xercesImpl:2.12.2'
-        api 'avalon-framework:avalon-framework-impl:4.3'
-        api 'net.sf.barcode4j:barcode4j:2.1'
+        // avalon は barcode4j の設定 API(Configuration・SAXConfigurationHandler)のためだけに要る。
+        // 古い pom が試験用の依存を compile 扱いで持っているので、配布物に log4j 1.2.11・
+        // junit 3.8.1・jmock 1.0.1 まで入っていた(2026-09-21 の棚卸し)。実行時に使う経路は無い
+        // (log4j も avalon のロガーもソースから参照していない)ので除外する。
+        // log4j 1.x は 2015 年に開発終了で CVE-2019-17571 等が残るため、置いておく理由がない。
+        api('avalon-framework:avalon-framework-impl:4.3') {
+            exclude group: 'log4j'
+            exclude group: 'junit'
+            exclude group: 'jmock'
+        }
+        // barcode4j も avalon を(除外なしで)引くので、こちらにも同じ除外が要る。
+        // 除外は宣言ごとに効くので、片方だけだと別の経路から入ってくる。
+        // commons-cli 1.0 → commons-lang 1.0 → junit 3.7 の経路もここで止まる
+        api('net.sf.barcode4j:barcode4j:2.1') {
+            exclude group: 'log4j'
+            exclude group: 'junit'
+            exclude group: 'jmock'
+        }
         api files('lib/Qrcode.jar')
         api 'de.rototor.jeuclid:jeuclid-core:3.1.14'
     }
