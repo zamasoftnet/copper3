@@ -6,8 +6,12 @@ import java.awt.geom.Point2D;
 import java.text.AttributedCharacterIterator;
 import java.util.List;
 
+import org.apache.batik.bridge.DefaultFontFamilyResolver;
+import org.apache.batik.bridge.FontFace;
+import org.apache.batik.bridge.FontFamilyResolver;
 import org.apache.batik.bridge.StrokingTextPainter;
 import org.apache.batik.bridge.TextSpanLayout;
+import org.apache.batik.gvt.font.GVTFontFamily;
 import org.apache.batik.gvt.text.TextPaintInfo;
 
 import jp.cssj.homare.ua.UserAgent;
@@ -28,6 +32,46 @@ class MyTextPainter extends StrokingTextPainter {
 		this.fm = ua.getFontManager();
 		this.hyphenation = HyphenationBundle.getHyphenation(null);
 	}
+
+	/**
+	 * 「どの指定フォントでも表示できない文字」へのフォント割当を、AWTのシステムフォント解決ではなく
+	 * チャンクの解決済みフォント(先頭={@link MyGVTFont})へ落とします(2026-09-21、段階 3)。
+	 *
+	 * <p>
+	 * 同梱していた batik-all 1.14 には {@code StrokingTextPainter} のこの箇所を書き換えるパッチが
+	 * 入っていた({@code lib/batik-patch.txt})。Batik 1.19 ではこの解決器を protected メソッドで
+	 * 差し替えられるので、jar のパッチを廃して同じ結果をここで得る:
+	 * {@code getFamilyThatCanDisplay} が null を返すと、呼び出し側は defaultFont
+	 * (=チャンクの解決済みフォントの先頭)へ落ちる。未割当になるのは解決済みリストの全フォントが
+	 * 表示できない文字だけなので、どれを選んでも豆腐になる点は同じ。AWT 由来の GVTFont が混ざると
+	 * {@code paintTextRuns} の {@link MyGVTFont} への変換が失敗するため、null 固定が正しい。
+	 * </p>
+	 */
+	protected FontFamilyResolver getFontFamilyResolver() {
+		return NO_SYSTEM_FONT_RESOLVER;
+	}
+
+	private static final FontFamilyResolver NO_SYSTEM_FONT_RESOLVER = new FontFamilyResolver() {
+		public GVTFontFamily resolve(String familyName) {
+			return DefaultFontFamilyResolver.SINGLETON.resolve(familyName);
+		}
+
+		public GVTFontFamily resolve(String familyName, FontFace fontFace) {
+			return DefaultFontFamilyResolver.SINGLETON.resolve(familyName, fontFace);
+		}
+
+		public GVTFontFamily loadFont(java.io.InputStream in, FontFace fontFace) throws Exception {
+			return DefaultFontFamilyResolver.SINGLETON.loadFont(in, fontFace);
+		}
+
+		public GVTFontFamily getDefault() {
+			return DefaultFontFamilyResolver.SINGLETON.getDefault();
+		}
+
+		public GVTFontFamily getFamilyThatCanDisplay(char c) {
+			return null;
+		}
+	};
 
 	protected void paintTextRuns(@SuppressWarnings("rawtypes") List textRuns, Graphics2D g2d) {
 		// TODO 輪郭だけの描画
