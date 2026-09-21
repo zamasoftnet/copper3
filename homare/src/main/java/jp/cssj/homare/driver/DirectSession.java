@@ -124,6 +124,12 @@ public class DirectSession extends AbstractCTISession
 
 	private boolean aborted = false;
 
+	/**
+	 * {@link #abort(byte)}で渡された中断の種類({@link AbortException#ABORT_NORMAL}か
+	 * {@link AbortException#ABORT_FORCE})です。0 は中断が来ていないことを表します。
+	 */
+	private byte abortMode = 0;
+
 	private boolean decodeMessage = true;
 
 	private boolean middlePath = false;
@@ -582,6 +588,7 @@ public class DirectSession extends AbstractCTISession
 
 		this.resolver.setup(uri, this.props, this);
 		this.aborted = false;
+		this.abortMode = 0;
 
 		final String outputType = UAProps.OUTPUT_TYPE.getString(this.props);
 		UserAgentFactory factory = (UserAgentFactory) PluginLoader.getPluginLoader().search(UserAgentFactory.class,
@@ -631,6 +638,7 @@ public class DirectSession extends AbstractCTISession
 		if (!this.aborted && this.ua != null) {
 			this.ua.abort(mode);
 			this.aborted = true;
+			this.abortMode = mode;
 		}
 	}
 
@@ -741,12 +749,27 @@ public class DirectSession extends AbstractCTISession
 				}
 			}
 		} catch (IOException e) {
+			// **中断は入出力エラーではない**(2026-09-21 に copper 4 から移植)。abort()が来ると
+			// 本文の受け口が畳まれるので、パーサ側には普通の IOException として見える。
+			// それを ERROR_IO で包むと、client には中断が「I/O error」として届いていた。
+			// 中断の報告は AbortException の経路に一本化する。
+			if (this.aborted) {
+				throw new AbortException(this.abortMode == 0 ? AbortException.ABORT_FORCE : this.abortMode);
+			}
+			// 既に型のついた失敗(TranscoderException)を ERROR_IO で包み直すと、
+			// 組み立て済みの本文がさらに前置きを受けて「I/O error. I/O error. ...」になる。
+			// 元の符号と状態を保って素通しする。
+			if (e instanceof TranscoderException) {
+				throw (TranscoderException) e;
+			}
 			short code = CTIMessageCodes.ERROR_IO;
 			String[] args = new String[] { e.getMessage() };
 			String mes = MessageCodeUtils.toString(code, args);
 			this.ua.message(code, args);
 			LOG.log(Level.WARNING, mes, e);
-			throw new TranscoderException(code, args, mes);
+			TranscoderException failure = new TranscoderException(code, args, mes);
+			failure.initCause(e);
+			throw failure;
 		}
 	}
 }
