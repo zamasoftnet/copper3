@@ -2,7 +2,9 @@ package jp.cssj.homare.impl.ua.svg;
 
 import java.awt.geom.Dimension2D;
 
+import org.apache.batik.bridge.ExternalResourceSecurity;
 import org.apache.batik.bridge.NoLoadScriptSecurity;
+import org.apache.batik.bridge.RelaxedExternalResourceSecurity;
 import org.apache.batik.bridge.ScriptSecurity;
 import org.apache.batik.util.ParsedURL;
 
@@ -55,5 +57,18 @@ class MyUserAgent extends UserAgentImpl {
 
 	public ScriptSecurity getScriptSecurity(String scriptType, ParsedURL scriptPURL, ParsedURL docPURL) {
 		return new NoLoadScriptSecurity(scriptType);
+	}
+
+	/**
+	 * SVG が参照する外部資源(画像・別文書)を文書の場所で制限しない。
+	 * <p>
+	 * Batik 1.14 の既定は全許可だったが、1.19 は文書と同じ場所の資源しか読まない。
+	 * そのままでは tmp:// で送った資源や別ホストの画像が読めず、SVG ごと落ちる。
+	 * 取得は MySVGImageElementBridge と MyURIResolver から Copper の解決器
+	 * ({@link UserAgent#resolve})を通るので、アクセスの制限はそちらで掛かる。1.14 と同じ動作に戻す。
+	 * </p>
+	 */
+	public ExternalResourceSecurity getExternalResourceSecurity(ParsedURL resourceURL, ParsedURL docURL) {
+		return new RelaxedExternalResourceSecurity(resourceURL, docURL);
 	}
 }
