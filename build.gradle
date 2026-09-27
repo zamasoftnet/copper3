@@ -110,6 +110,10 @@ configure(subprojects.findAll { javaProjectPaths.contains(it.path) }) {
 
     tasks.withType(JavaCompile).configureEach {
         options.encoding = 'UTF-8'
+        // source/target 1.8 だけだと、新しい JDK でコンパイルしたときに Java 9 以降の共変戻り値
+        // (ByteBuffer.clear() など)へ結び付き、Java 8 で NoSuchMethodError になる(2026-09-28、
+        // Java 8 で copperd を動かして sakae の CIDTable で踏んだ)。全モジュールを Java 8 の API に限る
+        options.release = 8
     }
 
     tasks.withType(Javadoc).configureEach {
