@@ -15,7 +15,6 @@ import java.security.KeyStore;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Properties;
 import java.util.Set;
@@ -334,28 +333,39 @@ public class CTIServer {
 	 * サーバーを停止します。
 	 * 
 	 */
-	public synchronized void shutdown() {
-		if (!this.running) {
-			return;
-		}
-		if (this.serverSocket != null) {
-			try {
-				this.serverSocket.close();
-			} catch (IOException e) {
-				LOG.log(Level.WARNING, "待ち受けソケットをクローズできませんでした", e);
+	public void shutdown() {
+		// **ワーカーを待つ間はサーバーの錠を持たない**(2026-09-28)。ワーカーは自分の錠を持ったまま
+		// 要求を処理し、終わると freeThread でサーバーの錠を取る。以前はサーバーの錠を持ったまま
+		// ワーカーの錠を取って join していたので、要求を終えたばかりのワーカーと互いに相手を待って
+		// 止まっていた(copperd の停止と接続の終わりが重なると起きる)。
+		final List<WorkerThread> workers;
+		synchronized (this) {
+			if (!this.running) {
+				return;
+			}
+			if (this.serverSocket != null) {
+				try {
+					this.serverSocket.close();
+				} catch (IOException e) {
+					LOG.log(Level.WARNING, "待ち受けソケットをクローズできませんでした", e);
+				}
+			}
+			if (this.tlsServerSocket != null) {
+				try {
+					this.tlsServerSocket.close();
+				} catch (IOException e) {
+					LOG.log(Level.WARNING, "SSL 待ち受けソケットをクローズできませんでした", e);
+				}
+			}
+			this.running = false;
+			// 空きワーカーを待っている受付を起こす
+			this.notifyAll();
+			synchronized (this.threads) {
+				workers = new ArrayList<WorkerThread>(this.threads);
 			}
 		}
-		if (this.tlsServerSocket != null) {
-			try {
-				this.tlsServerSocket.close();
-			} catch (IOException e) {
-				LOG.log(Level.WARNING, "SSL 待ち受けソケットをクローズできませんでした", e);
-			}
-		}
-		this.running = false;
 		LOG.info("サーバーを停止しています...");
-		for (Iterator<WorkerThread> i = this.threads.iterator(); i.hasNext();) {
-			WorkerThread worker = (WorkerThread) i.next();
+		for (WorkerThread worker : workers) {
 			synchronized (worker) {
 				worker.notify();
 			}
@@ -364,7 +374,7 @@ public class CTIServer {
 			} catch (InterruptedException e) {
 				// ignore
 			}
-			i.remove();
+			this.threads.remove(worker);
 			LOG.fine("ワーカーの数:" + this.threads.size());
 		}
 		LOG.info("サーバーを停止しました");

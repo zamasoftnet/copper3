@@ -91,26 +91,12 @@ class MidBodyAbortRoundTripTest {
 	}
 
 	@AfterEach
-	void stop() throws Exception {
+	void stop() throws IOException {
 		try {
 			// 中断のあとでも、閉じるときに中断をもう一度投げない
 			this.session.close();
 		} finally {
-			// 3.2 の CTIServer.shutdown はサーバーの錠を持ったまま worker を待ち、接続を片付け中の worker は
-			// サーバーの錠を待つので、重なると止まる。NativeServerProbe と同じく、worker が空いてから止める
-			final long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
-			for (;;) {
-				synchronized (this.server) {
-					if (this.server.getFreeThreads() == this.server.getTotalThreads()) {
-						this.server.shutdown();
-						break;
-					}
-				}
-				if (System.nanoTime() >= deadline) {
-					throw new AssertionError("サーバーの worker が空かなかった");
-				}
-				Thread.sleep(10);
-			}
+			this.server.shutdown();
 		}
 	}
 
@@ -193,11 +179,13 @@ class MidBodyAbortRoundTripTest {
 	 * 本文を読むだけの変換エンジン。本文の途中で中断されたら実エンジンと同じく中断を投げ、
 	 * {@link #failAfter} バイト読んだら入出力の失敗を投げる(残りは読まない)。
 	 */
-	private static final class Engine implements CTIDriver {
+	static final class Engine implements CTIDriver {
 		final CountDownLatch stopped = new CountDownLatch(1);
 		final AtomicInteger completed = new AtomicInteger();
 		final AtomicInteger connections = new AtomicInteger();
 		volatile long failAfter = -1;
+		/** 接続の後片付け(CLOSE を受けたワーカーが呼ぶ close)で待つ時間。停止との重なりを作るため */
+		volatile long closeDelayMillis = 0;
 
 		public boolean match(final URI uri) {
 			return true;
@@ -289,7 +277,13 @@ class MidBodyAbortRoundTripTest {
 			}
 
 			public void close() {
-				// 何も持たない
+				if (Engine.this.closeDelayMillis > 0) {
+					try {
+						Thread.sleep(Engine.this.closeDelayMillis);
+					} catch (final InterruptedException e) {
+						Thread.currentThread().interrupt();
+					}
+				}
 			}
 		}
 	}
