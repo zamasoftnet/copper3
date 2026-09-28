@@ -33,7 +33,10 @@ import jp.cssj.cti2.helpers.CTIMessageHelper;
 import jp.cssj.plugin.PluginLoader;
 import jp.cssj.server.acl.Acl;
 
+import org.apache.commons.fileupload.FileCountLimitExceededException;
 import org.apache.commons.fileupload.FileUploadException;
+import org.apache.commons.fileupload.FileUploadBase;
+import org.apache.commons.fileupload.MultipartStream;
 
 /**
  * 
@@ -59,6 +62,16 @@ public class RestServlet extends HttpServlet {
 	private boolean restResolver = false;
 
 	private boolean direct = false;
+
+	enum MultipartFailure {
+		REQUEST_TOO_LARGE,
+		FILE_TOO_LARGE,
+		FORM_FIELD_TOO_LARGE,
+		PART_COUNT_TOO_LARGE,
+		PART_HEADERS_TOO_LARGE,
+		MALFORMED,
+		IO_ERROR
+	}
 
 	private volatile long accessCount;
 
@@ -426,17 +439,87 @@ public class RestServlet extends HttpServlet {
 			RestServlet.sendMessage(req, res, ERROR_AUTHENTICATION_FAILURE);
 			LOG.log(Level.FINE, "Authentication failure.", e);
 		} catch (FileUploadException e) {
-			RestServlet.sendMessage(req, res, ERROR_BAD_REQUEST);
-			LOG.log(Level.WARNING, "Bad request.", e);
+			RestServlet.sendMultipartFailure(req, res, e);
 		} catch (URISyntaxException e) {
 			RestServlet.sendMessage(req, res, CTIMessageCodes.ERROR_BAD_DOCUMENT_URI);
 			LOG.log(Level.WARNING, "URI Syntax.", e);
 		} catch (IOException e) {
-			RestServlet.sendMessage(req, res, CTIMessageCodes.ERROR_IO);
-			LOG.log(Level.WARNING, "I/O error.", e);
+			MultipartFailure failure = classifyMultipartFailure(e);
+			if (failure == MultipartFailure.IO_ERROR) {
+				res.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+				RestServlet.sendMessage(req, res, CTIMessageCodes.ERROR_IO);
+				LOG.log(Level.WARNING, "I/O error.", e);
+			} else {
+				RestServlet.sendMultipartFailure(req, res, e);
+			}
 		} catch (Exception e) {
 			RestServlet.sendMessage(req, res, CTIMessageCodes.FATAL_UNEXPECTED);
 			LOG.log(Level.SEVERE, "Unexpected error.", e);
+		}
+	}
+
+	static MultipartFailure classifyMultipartFailure(Throwable exception) {
+		boolean fileUploadFailure = false;
+		boolean fileUploadIoFailure = false;
+		for (Throwable cause = exception; cause != null && cause != cause.getCause(); cause = cause.getCause()) {
+			if (cause instanceof RestRequest.FormFieldSizeLimitExceededException) {
+				return MultipartFailure.FORM_FIELD_TOO_LARGE;
+			}
+			if (cause instanceof RestRequest.FileSizeLimitIOException
+					|| cause instanceof FileUploadBase.FileSizeLimitExceededException) {
+				return MultipartFailure.FILE_TOO_LARGE;
+			}
+			if (cause instanceof FileCountLimitExceededException) {
+				return MultipartFailure.PART_COUNT_TOO_LARGE;
+			}
+			if (cause instanceof FileUploadBase.SizeLimitExceededException) {
+				String message = cause.getMessage();
+				if (message != null && message.startsWith("Header section has more than ")) {
+					return MultipartFailure.PART_HEADERS_TOO_LARGE;
+				}
+				return MultipartFailure.REQUEST_TOO_LARGE;
+			}
+			if (cause instanceof MultipartStream.MalformedStreamException) {
+				return MultipartFailure.MALFORMED;
+			}
+			if (cause instanceof FileUploadBase.IOFileUploadException) {
+				fileUploadIoFailure = true;
+			}
+			if (cause instanceof FileUploadException) {
+				fileUploadFailure = true;
+			}
+		}
+		if (fileUploadIoFailure) {
+			return MultipartFailure.IO_ERROR;
+		}
+		return fileUploadFailure ? MultipartFailure.MALFORMED : MultipartFailure.IO_ERROR;
+	}
+
+	static void sendMultipartFailure(HttpServletRequest req, HttpServletResponse res, Throwable exception)
+			throws ServletException, IOException {
+		MultipartFailure failure = classifyMultipartFailure(exception);
+		switch (failure) {
+		case REQUEST_TOO_LARGE:
+		case FILE_TOO_LARGE:
+		case FORM_FIELD_TOO_LARGE:
+		case PART_COUNT_TOO_LARGE:
+		case PART_HEADERS_TOO_LARGE:
+			res.setStatus(HttpServletResponse.SC_REQUEST_ENTITY_TOO_LARGE);
+			RestServlet.sendMessage(req, res, ERROR_BAD_REQUEST);
+			LOG.log(Level.FINE, "Multipart request rejected: {0}", failure);
+			break;
+		case MALFORMED:
+			res.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+			RestServlet.sendMessage(req, res, ERROR_BAD_REQUEST);
+			LOG.log(Level.WARNING, "Malformed multipart request.", exception);
+			break;
+		case IO_ERROR:
+			res.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+			RestServlet.sendMessage(req, res, CTIMessageCodes.ERROR_IO);
+			LOG.log(Level.WARNING, "Multipart I/O error.", exception);
+			break;
+		default:
+			throw new IllegalStateException(failure.name());
 		}
 	}
 
