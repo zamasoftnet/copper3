@@ -26,7 +26,7 @@ class DistributionTest {
         assertTrue(Files.isRegularFile(Paths.get(java)));String output=jar(kind,protocol,java);assertTrue(output.contains("JAVA=1.8."),output);
     }
     String jar(String kind,String protocol,String java)throws Exception {
-        Path jar=root.resolve("cti-java/build/release/cti-driver"+(kind.equals("min")?"-min":"")+"-2.2.4.jar");assertTrue(Files.isRegularFile(jar),"Build :cti-java:release before distribution tests");
+        Path jar=root.resolve("cti-java/build/release/cti-driver"+(kind.equals("min")?"-min":"")+"-2.2.5.jar");assertTrue(Files.isRegularFile(jar),"Build :cti-java:release before distribution tests");
         String cp=jar+File.pathSeparator+root.resolve("cti-java/cti-driver-ctip/build/classes/java/tlsTest");
         try(NativeServerProbe.Server server=new NativeServerProbe.Server(identity,protocol)) {
             return run(java,Arrays.asList("-Djavax.net.ssl.trustStore="+identity,"-Djavax.net.ssl.trustStorePassword=ephemeral-test-only","-Djavax.net.ssl.trustStoreType=PKCS12"),cp,kind,server.uri.toString());
@@ -46,7 +46,7 @@ class DistributionTest {
     void nativeServerRendersPdf(String protocol)throws Exception {
         String saved=System.getProperty("jp.cssj.driver.default");System.setProperty("jp.cssj.driver.default",profile().toString());
         try(NativeServerProbe.Server server=new NativeServerProbe.Server(identity,protocol,new jp.cssj.homare.driver.DirectDriver())) {
-            String cp=root.resolve("cti-java/build/release/cti-driver-min-2.2.4.jar")+File.pathSeparator+root.resolve("cti-java/cti-driver-ctip/build/classes/java/tlsTest");
+            String cp=root.resolve("cti-java/build/release/cti-driver-min-2.2.5.jar")+File.pathSeparator+root.resolve("cti-java/cti-driver-ctip/build/classes/java/tlsTest");
             run(LocalTls.javaTool("java"),Arrays.asList("-Djavax.net.ssl.trustStore="+identity,"-Djavax.net.ssl.trustStorePassword=ephemeral-test-only","-Djavax.net.ssl.trustStoreType=PKCS12"),cp,"pdf",server.uri.toString());
         }finally{if(saved==null)System.clearProperty("jp.cssj.driver.default");else System.setProperty("jp.cssj.driver.default",saved);}
     }
@@ -59,7 +59,7 @@ class DistributionTest {
             jp.cssj.server.socket.ProtocolHandler handler=(jp.cssj.server.socket.ProtocolHandler)loader.loadClass("jp.cssj.copper.v1.V1ProtocolHandler")
                 .getConstructor(java.net.URI.class,jp.cssj.cti2.CTIDriver.class).newInstance(java.net.URI.create("copper:direct:"),direct);
             server.server.setProtocolHandlers(new jp.cssj.server.socket.ProtocolHandler[]{handler});
-            String cp=root.resolve("cti-java/build/release/cti-driver-min-2.2.4.jar")+File.pathSeparator+root.resolve("cti-java/cti-driver-ctip/build/classes/java/tlsTest");
+            String cp=root.resolve("cti-java/build/release/cti-driver-min-2.2.5.jar")+File.pathSeparator+root.resolve("cti-java/cti-driver-ctip/build/classes/java/tlsTest");
             run(LocalTls.javaTool("java"),Collections.<String>emptyList(),cp,"pdf",server.uri+"&version=1");
         }finally{if(saved==null)System.clearProperty("jp.cssj.driver.default");else System.setProperty("jp.cssj.driver.default",saved);}
     }
@@ -88,7 +88,7 @@ class DistributionTest {
             }finally{exchange.close();}
         });server.start();
         try {
-            String cp=root.resolve("cti-java/build/release/cti-driver-2.2.4.jar")+File.pathSeparator+root.resolve("cti-java/cti-driver-ctip/build/classes/java/tlsTest");
+            String cp=root.resolve("cti-java/build/release/cti-driver-2.2.5.jar")+File.pathSeparator+root.resolve("cti-java/cti-driver-ctip/build/classes/java/tlsTest");
             run(java,Arrays.asList("-Djavax.net.ssl.trustStore="+identity,"-Djavax.net.ssl.trustStorePassword=ephemeral-test-only","-Djavax.net.ssl.trustStoreType=PKCS12"),cp,"full",protocol+"://localhost:"+server.getAddress().getPort()+"/");
             assertEquals(1,conversions.get());
         }finally{server.stop(0);}

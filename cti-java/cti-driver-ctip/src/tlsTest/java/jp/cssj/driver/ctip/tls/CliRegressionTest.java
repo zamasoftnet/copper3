@@ -13,7 +13,7 @@ class CliRegressionTest {
     @TempDir static Path temp;static Path identity,root;
     @BeforeAll static void setup()throws Exception{root=Paths.get(System.getProperty("stage1.root"));identity=LocalTls.generateIdentity(temp);}
     String run(boolean old,String mode,List<String> arguments)throws Exception {
-        String cp=root.resolve("cti-java/build/release/cti-driver-2.2.4.jar")+File.pathSeparator+root.resolve("cti-java/cti-driver-ctip/build/classes/java/tlsTest");
+        String cp=root.resolve("cti-java/build/release/cti-driver-2.2.5.jar")+File.pathSeparator+root.resolve("cti-java/cti-driver-ctip/build/classes/java/tlsTest");
         if(old) {
             StringBuilder baseline=new StringBuilder();
             try(java.util.stream.Stream<Path> jars=Files.list(root.resolve("build/stage1-old-jars"))){for(Iterator<Path> it=jars.filter(p->p.toString().endsWith(".jar")&&!p.getFileName().toString().equals("cssj-copper.jar")).sorted().iterator();it.hasNext();)baseline.append(it.next()).append(File.pathSeparator);}
@@ -47,5 +47,5 @@ class CliRegressionTest {
             if(option.equals("-t")||option.equals("--trust")){result=run(true,"network",args);assertTrue(result.contains("CLI_OK"),result);assertArrayEquals(new byte[]{1,2,3},Files.readAllBytes(output));}
         }
     }
-    @Test void version()throws Exception{assertTrue(run(false,"network",Arrays.asList("-v")).contains("2.2.4"));}
+    @Test void version()throws Exception{assertTrue(run(false,"network",Arrays.asList("-v")).contains("2.2.5"));}
 }

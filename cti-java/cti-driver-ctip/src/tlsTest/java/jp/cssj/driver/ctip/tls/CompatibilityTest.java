@@ -31,7 +31,7 @@ class CompatibilityTest {
         Path old=Paths.get(System.getProperty("stage1.root"),"build/stage1-old-jars");
         assertTrue(Files.isRegularFile(old.resolve("cti-driver-ctip-2.2.3.jar")),"Extract stage 0 baseline JARs first");
         String cp=System.getProperty("tls.test.classpath");if(side.equals("old-server"))cp=old.resolve("cti-server-ctip-2.2.3.jar")+File.pathSeparator+old.resolve("cti-driver-ctip-2.2.3.jar")+File.pathSeparator+cp;
-        Path client=side.equals("old-client")?old.resolve("cti-driver-ctip-2.2.3.jar"):Paths.get(System.getProperty("stage1.root"),"cti-java/cti-driver-ctip/build/libs/cti-driver-ctip-2.2.4.jar");
+        Path client=side.equals("old-client")?old.resolve("cti-driver-ctip-2.2.3.jar"):Paths.get(System.getProperty("stage1.root"),"cti-java/cti-driver-ctip/build/libs/cti-driver-ctip-2.2.5.jar");
         Path log=temp.resolve(side+"-"+protocol+"-"+scenario+".log");
         Process child=new ProcessBuilder(LocalTls.javaTool("java"),"-cp",cp,CompatibilityProbe.class.getName(),side,protocol,scenario,identity.toString(),client.toString()).redirectErrorStream(true).redirectOutput(log.toFile()).start();
         boolean done;try{done=child.waitFor(18,TimeUnit.SECONDS);}finally{LocalTls.stop(child);}

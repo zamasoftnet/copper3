@@ -79,6 +79,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 
 ■ 変更履歴
+-- v2.2.5 2026-09-28
+本文を送っている途中でサーバーが中断を返したとき、そのあとの close()・reset() が
+同じ例外をもう一度投げていた不具合を直しました(送信中に先読みした中断の応答を、
+送り終えていない場合に送信の失敗として扱っていました)。
+REST で本文を書いている途中の abort() が効かず、全文が変換されていた不具合を直しました。
+本文を閉じたときに中断(TranscoderException、INFO_ABORT)として知らせます。
+サーバー(cti-server-ctip): 本文の途中で変換が終わったときは、クライアントが本文を
+送り終えてから中断を知らせます(cti.java 2.3.3 と同じ修正)。
+
 -- v2.2.4 2026-09-11
 TLS 1.3、部分送受信、終了・中断・reset時の資源解放を修正しました。
 CTIP/HTTPS REST は既定で証明書と接続先名を検証します。
@@ -94,7 +103,7 @@ ctips と version=1 の組合せは、平文へ接続せず例外にします。
 reset後の旧出力ストリームは無効です(writeはIllegalStateException、closeは何もしません)。
 
 版と公開APIの対応:
-2.2.4 = 従来の MetaSource / RandomBuilder / META-INF/plugin 探索 + TLS修正
+2.2.4 以降 = 従来の MetaSource / RandomBuilder / META-INF/plugin 探索 + TLS修正
 2.3.0 = 上流の SourceMetadata / FragmentedOutput に移行した別API + TLS修正
 
 -- v2.2.3 2024-03-27

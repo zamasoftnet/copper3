@@ -225,7 +225,12 @@ public class V2RequestConsumer {
                 }
             }
         } catch (IOException | RuntimeException e) {
-            if (e instanceof jp.cssj.cti2.TranscoderException && target.done) { throw e; }
+            // The server's ABORT, read by pollResponse, is a complete response, not a
+            // transport failure: the inbound stream is in sync, and the queued packets
+            // (the rest of the body, possibly a partly written frame) are still sent in
+            // order by the next send and ignored by the server. Latching it closed the
+            // connection and made close()/reset() rethrow the abort (2026-09-28, from cti.java 2.3.3).
+            if (e instanceof jp.cssj.cti2.TranscoderException) { throw e; }
             synchronized (packetLock) {
                 if (sendFailure == null) { sendFailure = e instanceof IOException ? (IOException) e : new IOException(e); }
             }
