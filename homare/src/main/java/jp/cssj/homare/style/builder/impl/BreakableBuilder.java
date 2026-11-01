@@ -938,7 +938,7 @@ public abstract class BreakableBuilder extends BlockBuilder {
 
 		final BreakMode mode;
 		if (this.flowStack == null || this.flowStack.size() <= 1) {
-			mode = BreakMode.DEFAULT_BREAK_MODE;
+			mode = AutoBreakMode.DEFAULT;
 		} else {
 			mode = new AutoBreakMode(this.getFlowBox());
 			flags |= IPageBreakableBox.FLAGS_LAST;

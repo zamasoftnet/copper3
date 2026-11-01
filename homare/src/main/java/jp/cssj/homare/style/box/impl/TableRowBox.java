@@ -587,7 +587,7 @@ public class TableRowBox extends AbstractInnerTableBox implements IPageBreakable
 				cutPageAxis += xcell.getTableRow().getPageSize();
 			}
 			// System.err.println(cutPageAxis);
-			TableCellBox nextCell = (TableCellBox) prevCell.splitPageAxis(cutPageAxis, BreakMode.DEFAULT_BREAK_MODE,
+			TableCellBox nextCell = (TableCellBox) prevCell.splitPageAxis(cutPageAxis, BreakMode.AutoBreakMode.DEFAULT,
 					IPageBreakableBox.FLAGS_SPLIT);
 			assert nextCell != null;
 			assert nextCell != prevCell;

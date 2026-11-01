@@ -350,6 +350,7 @@ project(':homare') {
         }
         api files('lib/Qrcode.jar')
         api 'de.rototor.jeuclid:jeuclid-core:3.1.14'
+        testImplementation 'junit:junit:4.13.2'
     }
 }
 

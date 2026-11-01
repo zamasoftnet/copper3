@@ -12,6 +12,7 @@ import jp.cssj.homare.style.box.AbstractInnerTableBox;
 import jp.cssj.homare.style.box.IBox;
 import jp.cssj.homare.style.box.IPageBreakableBox;
 import jp.cssj.homare.style.box.content.BreakMode;
+import jp.cssj.homare.style.box.content.BreakMode.AutoBreakMode;
 import jp.cssj.homare.style.box.content.BreakMode.ForceBreakMode;
 import jp.cssj.homare.style.box.content.BreakMode.TableForceBreakMode;
 import jp.cssj.homare.style.box.impl.FlowBlockBox;
@@ -1595,7 +1596,7 @@ public class OnePassTableBuilder implements TableBuilder {
 						pageLimit -= this.tableBox.getTableBody(i).getPageSize();
 					}
 					byte flags = this.tableBox.getTableBodyCount() == 0 ? IPageBreakableBox.FLAGS_FIRST : (byte) 0;
-					if (this.pageBreak(BreakMode.DEFAULT_BREAK_MODE, pageLimit, flags)) {
+					if (this.pageBreak(AutoBreakMode.DEFAULT, pageLimit, flags)) {
 						continue;
 					}
 				}
@@ -1674,7 +1675,7 @@ public class OnePassTableBuilder implements TableBuilder {
 			// System.out.println("OPT A:" + pageLimit + "/"
 			// + this.bindRowGroupBox.getHeight() + "/"
 			// + this.bindRowGroupBox.getTableRowCount());
-			if (this.pageBreak(BreakMode.DEFAULT_BREAK_MODE, pageLimit, flags)) {
+			if (this.pageBreak(AutoBreakMode.DEFAULT, pageLimit, flags)) {
 				return true;
 			}
 		}

@@ -155,7 +155,7 @@ public class Floatings {
 							&& vertical == StyleUtils.isVertical(params.flow)) {
 						byte xflags = first ? IPageBreakableBox.FLAGS_FIRST : IPageBreakableBox.FLAGS_SPLIT;
 						double pageAxis = pageLimit - floating.pageAxis;
-						nextBox = (IFloatBox) containerBox.splitPageAxis(pageAxis, BreakMode.DEFAULT_BREAK_MODE,
+						nextBox = (IFloatBox) containerBox.splitPageAxis(pageAxis, BreakMode.AutoBreakMode.DEFAULT,
 								xflags);
 						break;
 					}

@@ -23,6 +23,13 @@ public abstract class BreakMode {
 	 * 指定線上での自動改ページです。
 	 */
 	public static class AutoBreakMode extends BreakMode {
+		/**
+		 * 特定のボックスを指定しない自動改ページです。
+		 * 親の初期化子がこのクラスを生成すると、このクラスから初期化を始めたスレッドと、ForceBreakModeから親の初期化を始めた
+		 * スレッドが互いを待ってデッドロックするので、親ではなくここに置きます(2026-11-01)。
+		 */
+		public static final AutoBreakMode DEFAULT = new AutoBreakMode();
+
 		public final IBox box;
 
 		public AutoBreakMode(IBox box) {
@@ -45,8 +52,6 @@ public abstract class BreakMode {
 			return "AUTO_BREAK_MODE/" + this.box.getParams().element;
 		}
 	};
-
-	public static AutoBreakMode DEFAULT_BREAK_MODE = new AutoBreakMode();
 
 	/**
 	 * 特定の場所での強制改ページです。
