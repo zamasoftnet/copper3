@@ -67,7 +67,10 @@ public class NativeServerProbe {
             server.setConfigFile(identity.resolveSibling("test.properties").toFile(),p);server.startup();
             ServerSocket socket=(ServerSocket)field(server,CTIServer.class,tls?"tlsServerSocket":"serverSocket");
             check(socket!=null,"Native TLS listener not started");if(tls)((SSLServerSocket)socket).setEnabledProtocols(new String[]{protocol});
-            uri=URI.create((tls?"ctips":"ctip")+"://localhost:"+socket.getLocalPort()+"/?timeout=3000");
+            // The first real conversion in this JVM loads the engine, and under load that took 3 to over 20 seconds (2026-11-01).
+            // It stays under DistributionTest's 70-second process deadline, so a hang still fails with the client's timeout.
+            int timeout=conversionDriver==null?3000:60000;
+            uri=URI.create((tls?"ctips":"ctip")+"://localhost:"+socket.getLocalPort()+"/?timeout="+timeout);
         }
         public void close() throws Exception {
             // CTIServer.shutdown holds the server monitor while joining workers.

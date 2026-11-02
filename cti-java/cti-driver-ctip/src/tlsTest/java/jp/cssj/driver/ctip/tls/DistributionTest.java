@@ -15,7 +15,7 @@ class DistributionTest {
     static String run(String java,List<String> options,String cp,String... args)throws Exception {
         List<String> cmd=new ArrayList<String>();cmd.add(java);cmd.addAll(options);cmd.add("-cp");cmd.add(cp);cmd.add(DistributionProbe.class.getName());cmd.addAll(Arrays.asList(args));
         Path log=temp.resolve(UUID.randomUUID()+".log");Process child=new ProcessBuilder(cmd).redirectErrorStream(true).redirectOutput(log.toFile()).start();boolean done;
-        try{done=child.waitFor(25,TimeUnit.SECONDS);}finally{LocalTls.stop(child);}
+        try{done=child.waitFor(70,TimeUnit.SECONDS);}finally{LocalTls.stop(child);}
         String output=new String(Files.readAllBytes(log),"UTF-8");System.out.println(output);assertTrue(done,output);assertEquals(0,child.exitValue(),output);assertTrue(output.contains("DISTRIBUTION_OK"),output);return output;
     }
     @ParameterizedTest @CsvSource({"min,plain","min,TLSv1.2","min,TLSv1.3","full,plain","full,TLSv1.2","full,TLSv1.3"})
